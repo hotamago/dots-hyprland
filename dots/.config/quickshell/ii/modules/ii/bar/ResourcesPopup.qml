@@ -12,6 +12,17 @@ StyledPopup {
         return (kb / (1024 * 1024)).toFixed(1) + " GB";
     }
 
+    // Helper function to format bytes/sec to human-readable speed
+    function formatSpeed(bytesPerSec) {
+        if (bytesPerSec < 1024) {
+            return bytesPerSec.toFixed(0) + " B/s";
+        } else if (bytesPerSec < 1024 * 1024) {
+            return (bytesPerSec / 1024).toFixed(1) + " KB/s";
+        } else {
+            return (bytesPerSec / (1024 * 1024)).toFixed(2) + " MB/s";
+        }
+    }
+
     Row {
         anchors.centerIn: parent
         spacing: 12
@@ -87,6 +98,29 @@ StyledPopup {
                     icon: "bolt"
                     label: Translation.tr("Load:")
                     value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`
+                }
+            }
+        }
+
+        Column {
+            anchors.top: parent.top
+            spacing: 8
+
+            StyledPopupHeaderRow {
+                icon: "network_check"
+                label: Translation.tr("Network")
+            }
+            Column {
+                spacing: 4
+                StyledPopupValueRow {
+                    icon: "download"
+                    label: Translation.tr("Download:")
+                    value: root.formatSpeed(ResourceUsage.networkDownloadSpeed)
+                }
+                StyledPopupValueRow {
+                    icon: "upload"
+                    label: Translation.tr("Upload:")
+                    value: root.formatSpeed(ResourceUsage.networkUploadSpeed)
                 }
             }
         }
