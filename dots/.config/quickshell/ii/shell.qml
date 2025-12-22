@@ -11,6 +11,7 @@ import qs.modules.ii.background
 import qs.modules.ii.bar
 import qs.modules.ii.cheatsheet
 import qs.modules.ii.dock
+import qs.modules.ii.displayMode
 import qs.modules.ii.lock
 import qs.modules.ii.mediaControls
 import qs.modules.ii.notificationPopup
@@ -69,6 +70,7 @@ ShellRoot {
     PanelLoader { identifier: "iiCheatsheet"; component: Cheatsheet {} }
     PanelLoader { identifier: "iiDock"; extraCondition: Config.options.dock.enable; component: Dock {} }
     PanelLoader { identifier: "iiLock"; component: Lock {} }
+    PanelLoader { identifier: "iiDisplayMode"; component: DisplayMode {} }
     PanelLoader { identifier: "iiMediaControls"; component: MediaControls {} }
     PanelLoader { identifier: "iiNotificationPopup"; component: NotificationPopup {} }
     PanelLoader { identifier: "iiOnScreenDisplay"; component: OnScreenDisplay {} }
