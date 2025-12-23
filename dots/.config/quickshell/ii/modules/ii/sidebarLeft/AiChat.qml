@@ -323,9 +323,9 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 implicitWidth: statusRowLayout.implicitWidth + 10 * 2
                 implicitHeight: Math.max(statusRowLayout.implicitHeight, 38)
                 radius: Appearance.rounding.normal - root.padding
-                color: Appearance.colors.colLayer2
-                Behavior on implicitWidth {
-                    animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+                color: messageListView.atYBeginning ? Appearance.colors.colLayer2 : Appearance.colors.colLayer2Base
+                Behavior on color {
+                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                 }
                 RowLayout {
                     id: statusRowLayout
