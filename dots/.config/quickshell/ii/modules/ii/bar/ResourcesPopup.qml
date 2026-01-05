@@ -185,28 +185,5 @@ StyledPopup {
                 }
             }
         }
-
-        Column {
-            anchors.top: parent.top
-            spacing: 8
-
-            StyledPopupHeaderRow {
-                icon: "network_check"
-                label: Translation.tr("Network")
-            }
-            Column {
-                spacing: 4
-                StyledPopupValueRow {
-                    icon: "download"
-                    label: Translation.tr("Download:")
-                    value: root.formatSpeed(ResourceUsage.networkDownloadSpeed)
-                }
-                StyledPopupValueRow {
-                    icon: "upload"
-                    label: Translation.tr("Upload:")
-                    value: root.formatSpeed(ResourceUsage.networkUploadSpeed)
-                }
-            }
-        }
     }
 }
