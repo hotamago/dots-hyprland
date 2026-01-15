@@ -22,8 +22,26 @@ Item {
 
     // Smart Packing Logic - macOS-like grid layout
     property var layoutMap: ({})
+    property bool layoutRecalculationPending: false
+    property var pendingWindowList: null
 
     function recalculateLayout(windowList) {
+        // Debounce layout recalculation to avoid excessive calculations
+        pendingWindowList = windowList; // Store the latest window list
+        if (layoutRecalculationPending) {
+            return;
+        }
+        layoutRecalculationPending = true;
+        Qt.callLater(() => {
+            layoutRecalculationPending = false;
+            if (pendingWindowList !== null) {
+                recalculateLayoutImmediate(pendingWindowList);
+                pendingWindowList = null;
+            }
+        });
+    }
+
+    function recalculateLayoutImmediate(windowList) {
         if (!windowList || windowList.length === 0) {
             root.layoutMap = {};
             return;
@@ -188,16 +206,60 @@ Item {
     }
 
     // Helper to get active windows on current monitor & workspace
-    property var activeWindows: {
+    // Cache the computation to avoid recalculating on every access
+    property var _cachedActiveWorkspaceId: null
+    property var _cachedActiveWindows: []
+    
+    function updateActiveWindows() {
         const activeWorkspaceId = monitor.activeWorkspace?.id;
-        if (!activeWorkspaceId)
-            return [];
+        if (!activeWorkspaceId) {
+            _cachedActiveWindows = [];
+            _cachedActiveWorkspaceId = null;
+            return;
+        }
 
-        return ToplevelManager.toplevels.values.filter(toplevel => {
+        // Only recalculate if workspace changed
+        if (_cachedActiveWorkspaceId === activeWorkspaceId) {
+            return;
+        }
+
+        _cachedActiveWorkspaceId = activeWorkspaceId;
+        _cachedActiveWindows = ToplevelManager.toplevels.values.filter(toplevel => {
             const address = `0x${toplevel.HyprlandToplevel?.address}`;
             const win = windowByAddress[address];
             return win && win.workspace.id === activeWorkspaceId;
         });
+    }
+
+    property var activeWindows: {
+        // Only update when task view is open to avoid unnecessary calculations
+        if (GlobalStates.taskViewOpen) {
+            updateActiveWindows();
+        }
+        return _cachedActiveWindows;
+    }
+
+    // Watch for workspace changes - invalidate cache when workspace changes
+    onMonitorChanged: {
+        _cachedActiveWorkspaceId = null;
+        updateActiveWindows();
+        recalculateLayout(activeWindows);
+    }
+
+    // Use a Timer to periodically check for changes (more reliable than signals)
+    Timer {
+        id: refreshTimer
+        interval: 100 // Check every 100ms when visible
+        running: root.panelWindow.visible && GlobalStates.taskViewOpen
+        repeat: true
+        onTriggered: {
+            const currentWorkspaceId = monitor.activeWorkspace?.id;
+            if (currentWorkspaceId !== _cachedActiveWorkspaceId) {
+                _cachedActiveWorkspaceId = null;
+                updateActiveWindows();
+                recalculateLayout(activeWindows);
+            }
+        }
     }
 
     onActiveWindowsChanged: {
@@ -206,6 +268,48 @@ Item {
 
     onWidthChanged: recalculateLayout(activeWindows)
     onHeightChanged: recalculateLayout(activeWindows)
+
+    // Cache monitor lookups to avoid repeated find() calls
+    property var cachedWidgetMonitor: null
+    property var monitorCache: ({})
+
+    function getMonitorById(monitorId) {
+        if (!monitorId) return null;
+        if (monitorCache[monitorId]) {
+            return monitorCache[monitorId];
+        }
+        const found = HyprlandData.monitors.find(m => m.id === monitorId);
+        if (found) {
+            monitorCache[monitorId] = found;
+        }
+        return found;
+    }
+
+    Component.onCompleted: {
+        cachedWidgetMonitor = getMonitorById(root.monitor.id);
+        // Initial update
+        updateActiveWindows();
+    }
+
+    // Update immediately when task view opens
+    Connections {
+        target: GlobalStates
+        function onTaskViewOpenChanged() {
+            if (GlobalStates.taskViewOpen) {
+                _cachedActiveWorkspaceId = null;
+                updateActiveWindows();
+                recalculateLayout(activeWindows);
+            }
+        }
+    }
+
+    Connections {
+        target: HyprlandData
+        function onMonitorsChanged() {
+            monitorCache = {};
+            cachedWidgetMonitor = getMonitorById(root.monitor.id);
+        }
+    }
 
     // The windows
     Repeater {
@@ -217,10 +321,10 @@ Item {
 
             toplevel: modelData
             windowData: root.windowByAddress[address]
-            monitorData: HyprlandData.monitors.find(m => m.id === windowData?.monitor)
+            monitorData: root.getMonitorById(windowData?.monitor)
             scale: 1 // We want 1:1 scale for previews in the grid
 
-            widgetMonitor: HyprlandData.monitors.find(m => m.id === root.monitor.id)
+            widgetMonitor: root.cachedWidgetMonitor
 
             // Layout props
             targetX: (root.layoutMap[address]?.x || 0)

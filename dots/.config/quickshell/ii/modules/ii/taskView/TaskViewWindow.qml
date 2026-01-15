@@ -88,8 +88,9 @@ Item { // Window
     ScreencopyView {
         id: windowPreview
         anchors.fill: parent
-        captureSource: GlobalStates.taskViewOpen ? root.toplevel : null
-        live: true
+        // Only capture when task view is open and this window is visible
+        captureSource: (GlobalStates.taskViewOpen && root.visible) ? root.toplevel : null
+        live: GlobalStates.taskViewOpen && root.visible // Only live capture when visible
 
         // Color overlay for interactions
         Rectangle {

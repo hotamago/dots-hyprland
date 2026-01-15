@@ -52,12 +52,14 @@ Scope {
                 z: -2
             }
 
+            // Lazy load wallpaper only when visible to improve initial load performance
             Image {
                 id: bgWallpaper
                 anchors.fill: parent
-                source: root.wallpaperPath
+                source: root.visible ? root.wallpaperPath : ""
                 fillMode: Image.PreserveAspectCrop
                 visible: false // Hidden, used as source for blur
+                asynchronous: true // Load asynchronously to avoid blocking
             }
 
             GaussianBlur {
@@ -66,6 +68,7 @@ Scope {
                 radius: 30
                 samples: 16
                 z: -1
+                visible: root.visible // Only process blur when visible
 
                 // Dimming layer
                 Rectangle {
