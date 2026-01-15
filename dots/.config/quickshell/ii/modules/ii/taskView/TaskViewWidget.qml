@@ -218,17 +218,26 @@ Item {
             return;
         }
 
-        // Only recalculate if workspace changed
-        if (_cachedActiveWorkspaceId === activeWorkspaceId) {
-            return;
-        }
-
-        _cachedActiveWorkspaceId = activeWorkspaceId;
-        _cachedActiveWindows = ToplevelManager.toplevels.values.filter(toplevel => {
+        // Always recalculate the windows list to catch closed windows
+        // Cache is still used to avoid unnecessary layout recalculations
+        const newActiveWindows = ToplevelManager.toplevels.values.filter(toplevel => {
             const address = `0x${toplevel.HyprlandToplevel?.address}`;
             const win = windowByAddress[address];
             return win && win.workspace.id === activeWorkspaceId;
         });
+
+        // Check if windows actually changed by comparing sets of addresses
+        const workspaceChanged = _cachedActiveWorkspaceId !== activeWorkspaceId;
+        const cachedAddresses = new Set(_cachedActiveWindows.map(w => `0x${w.HyprlandToplevel?.address}`));
+        const newAddresses = new Set(newActiveWindows.map(w => `0x${w.HyprlandToplevel?.address}`));
+        const addressesEqual = cachedAddresses.size === newAddresses.size && 
+            [...cachedAddresses].every(addr => newAddresses.has(addr));
+        const windowsChanged = workspaceChanged || !addressesEqual;
+
+        if (windowsChanged) {
+            _cachedActiveWorkspaceId = activeWorkspaceId;
+            _cachedActiveWindows = newActiveWindows;
+        }
     }
 
     property var activeWindows: {
@@ -253,10 +262,12 @@ Item {
         running: root.panelWindow.visible && GlobalStates.taskViewOpen
         repeat: true
         onTriggered: {
-            const currentWorkspaceId = monitor.activeWorkspace?.id;
-            if (currentWorkspaceId !== _cachedActiveWorkspaceId) {
-                _cachedActiveWorkspaceId = null;
-                updateActiveWindows();
+            const oldWindowsLength = _cachedActiveWindows.length;
+            const oldWorkspaceId = _cachedActiveWorkspaceId;
+            updateActiveWindows();
+            // If windows changed (count or workspace), recalculate layout
+            if (oldWindowsLength !== _cachedActiveWindows.length || 
+                oldWorkspaceId !== _cachedActiveWorkspaceId) {
                 recalculateLayout(activeWindows);
             }
         }
