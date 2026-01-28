@@ -34,6 +34,11 @@ ApplicationWindow {
             component: "modules/settings/GeneralConfig.qml"
         },
         {
+            name: Translation.tr("Startup"),
+            icon: "rocket_launch",
+            component: "modules/settings/StartupExecConfig.qml"
+        },
+        {
             name: Translation.tr("Bar"),
             icon: "toast",
             iconRotation: 180,
