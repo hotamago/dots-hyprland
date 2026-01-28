@@ -17,17 +17,25 @@ Item {
     property string sortMode: "name" // "name", "recent"
     property string filterCategory: "all" // "all", "favorites"
     
-    property real collapsedHeight: 400 // Better initial height
     property real availableHeight: 0
     property real availableWidth: 0
-    property real expandedHeight: {
-        // Use most of available height when expanded, but leave space for top bar
-        if (availableHeight > 0) {
-            // Use 85% of available height to ensure it doesn't overlap top bar
-            // This leaves ~15% for the bar and some breathing room
-            return availableHeight * 0.85;
-        }
-        return 600;
+    readonly property real maxHeightExpanded: availableHeight > 0 ? (availableHeight * 0.85) : 600
+    readonly property real maxHeightCollapsed: availableHeight > 0 ? Math.min(availableHeight * 0.55, 400) : 400
+    readonly property real maxHeight: root.expanded ? root.maxHeightExpanded : root.maxHeightCollapsed
+    readonly property real contentMargins: root.expanded ? 20 : 15
+    readonly property real chromeHeight: {
+        // Everything except the scrollable grid area (includes margins).
+        // ColumnLayout.spacing applies between visible items only.
+        const headerH = headerRow.implicitHeight || 0;
+        const searchH = root.expanded ? (searchField.implicitHeight || 0) : 0;
+        const spacingCount = root.expanded ? 2 : 1; // header->search->grid OR header->grid
+        return (contentMargins * 2) + headerH + searchH + (columnLayout.spacing * spacingCount);
+    }
+    readonly property real gridViewportHeight: {
+        const minH = root.expanded ? 100 : 40;
+        const maxGridH = Math.max(0, root.maxHeight - root.chromeHeight);
+        const contentH = appGrid.contentHeight || 0;
+        return Math.max(minH, Math.min(contentH, maxGridH));
     }
     property int columns: {
         if (availableWidth > 0) {
@@ -49,7 +57,7 @@ Item {
     property bool propertiesDialogVisible: false
     property var propertiesDialogApp: null
     
-    implicitHeight: root.expanded ? root.expandedHeight : root.collapsedHeight
+    implicitHeight: root.chromeHeight + root.gridViewportHeight
     
     Behavior on implicitHeight {
         NumberAnimation {
@@ -141,12 +149,14 @@ Item {
         border.color: Appearance.colors.colLayer0Border
         
         ColumnLayout {
+            id: columnLayout
             anchors.fill: parent
-            anchors.margins: root.expanded ? 20 : 15
+            anchors.margins: root.contentMargins
             spacing: 10
             
             // Header with search and controls
             RowLayout {
+                id: headerRow
                 Layout.fillWidth: true
                 spacing: 8
                 
@@ -257,8 +267,8 @@ Item {
             ScrollView {
                 id: scrollView
                 Layout.fillWidth: true
-                Layout.fillHeight: true
                 Layout.minimumHeight: root.expanded ? 100 : 40
+                Layout.preferredHeight: root.gridViewportHeight
                 clip: true
                 
                 GridView {

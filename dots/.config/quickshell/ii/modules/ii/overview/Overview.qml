@@ -310,7 +310,7 @@ Scope {
                         id: appDrawer
                         Layout.alignment: Qt.AlignHCenter
                         Layout.fillWidth: appDrawer.expanded
-                        Layout.preferredWidth: appDrawer.expanded ? flickable.width - 40 : Math.min(1200, flickable.width - 40)
+                        Layout.preferredWidth: appDrawer.expanded ? flickable.width - 40 : Math.max(200, flickable.width - 300)
                         visible: (root.searchingText == "")
                         // But hide it when searching and not expanded (search results take priority)
                         opacity: (root.searchingText != "" && !appDrawer.expanded) ? 0 : 1
