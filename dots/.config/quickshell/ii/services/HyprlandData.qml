@@ -21,6 +21,7 @@ Singleton {
     property var activeWorkspace: null
     property var monitors: []
     property var layers: ({})
+    property bool monitorsAllSupported: true
 
     // Convenient stuff
 
@@ -113,11 +114,26 @@ Singleton {
 
     Process {
         id: getMonitors
-        command: ["hyprctl", "monitors", "-j"]
+        command: root.monitorsAllSupported
+            ? ["hyprctl", "monitors", "all", "-j"]
+            : ["hyprctl", "monitors", "-j"]
         stdout: StdioCollector {
             id: monitorsCollector
             onStreamFinished: {
-                root.monitors = JSON.parse(monitorsCollector.text);
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(monitorsCollector.text);
+                } catch (e) {
+                    // Older Hyprland versions don't support `hyprctl monitors all -j`.
+                    if (root.monitorsAllSupported) {
+                        root.monitorsAllSupported = false;
+                        root.updateMonitors();
+                    }
+                    return;
+                }
+
+                if (Array.isArray(parsed))
+                    root.monitors = parsed;
             }
         }
     }

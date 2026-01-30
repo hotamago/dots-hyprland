@@ -36,10 +36,10 @@ Singleton {
     IdleInhibitor {
         id: idleInhibitor
         window: PanelWindow {
-            // Inhibitor requires a "visible" surface
-            // Actually not lol
-            implicitWidth: 0
-            implicitHeight: 0
+            // Inhibitor requires a visible, mapped surface per wayland idle-inhibit protocol.
+            // Zero-size windows are often not honored by compositors (e.g. Hyprland).
+            implicitWidth: 1
+            implicitHeight: 1
             color: "transparent"
             // Just in case...
             anchors {

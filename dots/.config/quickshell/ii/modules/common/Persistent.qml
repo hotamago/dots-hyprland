@@ -83,6 +83,11 @@ Singleton {
                 property bool inhibit: false
             }
 
+            property JsonObject displayMode: JsonObject {
+                // Last display mode applied via the Display Mode overlay (Super+P).
+                property string lastModeId: ""
+            }
+
             property JsonObject overlay: JsonObject {
                 property list<string> open: ["crosshair", "recorder", "volumeMixer", "resources"]
                 property JsonObject crosshair: JsonObject {

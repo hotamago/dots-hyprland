@@ -21,6 +21,8 @@ import qs.modules.ii.sidebarRight
 import qs.modules.ii.overlay
 import qs.modules.ii.verticalBar
 import qs.modules.ii.wallpaperSelector
+import qs.modules.ii.displayMode
+import qs.modules.ii.taskView
 
 Scope {
     PanelLoader { extraCondition: !Config.options.bar.vertical; component: Bar {} }
@@ -42,4 +44,6 @@ Scope {
     PanelLoader { component: SidebarRight {} }
     PanelLoader { extraCondition: Config.options.bar.vertical; component: VerticalBar {} }
     PanelLoader { component: WallpaperSelector {} }
+    PanelLoader { component: DisplayMode {} }
+    PanelLoader { component: TaskView {} }
 }
