@@ -9,6 +9,7 @@
 import "modules/common"
 import "services"
 import "panelFamilies"
+import qs.services
 
 import QtQuick
 import QtQuick.Window
@@ -64,6 +65,19 @@ ShellRoot {
 
         function cycle(): void {
             root.cyclePanelFamily()
+        }
+    }
+
+    IpcHandler {
+        target: "lidSwitch"
+
+        function suspend(): void {
+            // Only suspend if "Keep system awake" is not enabled
+            // Check both Idle.inhibit and Persistent state to be safe
+            const isInhibited = Idle.inhibit || (Persistent.ready && Persistent.states.idle.inhibit);
+            if (!isInhibited) {
+                Quickshell.execDetached(["bash", "-c", "systemctl suspend || loginctl suspend"]);
+            }
         }
     }
 
