@@ -59,7 +59,6 @@ Scope {
                     if (!GlobalStates.overviewOpen) {
                         searchWidget.disableExpandAnimation();
                         overviewScope.dontAutoCancelSearch = false;
-                        GlobalFocusGrab.dismiss();
                         // Reset drawer state
                         appDrawer.expanded = false;
                         appDrawer.searchText = "";
@@ -68,19 +67,11 @@ Scope {
                         if (!overviewScope.dontAutoCancelSearch) {
                             searchWidget.cancelSearch();
                         }
-                        GlobalFocusGrab.addDismissable(panelWindow);
                         // Reset drawer state on open
                         appDrawer.expanded = false;
                         appDrawer.searchText = "";
                         delayedGrabTimer.start();
                     }
-                }
-            }
-
-            Connections {
-                target: GlobalFocusGrab
-                function onDismissed() {
-                    GlobalStates.overviewOpen = false;
                 }
             }
 
