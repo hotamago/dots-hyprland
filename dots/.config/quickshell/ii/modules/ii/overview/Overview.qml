@@ -14,16 +14,62 @@ import Quickshell.Hyprland
 Scope {
     id: overviewScope
     property bool dontAutoCancelSearch: false
-    Variants {
-        id: overviewVariants
-        model: Quickshell.screens
-        PanelWindow {
-            id: root
-            required property var modelData
-            property string searchingText: ""
-            readonly property HyprlandMonitor monitor: Hyprland.monitorFor(root.screen)
-            property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
-            screen: modelData
+
+    PanelWindow {
+        id: panelWindow
+        property string searchingText: ""
+        readonly property HyprlandMonitor monitor: Hyprland.monitorFor(panelWindow.screen)
+        property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
+        visible: GlobalStates.overviewOpen
+
+        WlrLayershell.namespace: "quickshell:overview"
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.keyboardFocus: GlobalStates.overviewOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        color: "transparent"
+
+        mask: Region {
+            item: GlobalStates.overviewOpen ? columnLayout : null
+        }
+
+        anchors {
+            top: true
+            bottom: true
+            left: true
+            right: true
+        }
+
+        Connections {
+            target: GlobalStates
+            function onOverviewOpenChanged() {
+                if (!GlobalStates.overviewOpen) {
+                    searchWidget.disableExpandAnimation();
+                    overviewScope.dontAutoCancelSearch = false;
+                    GlobalFocusGrab.dismiss();
+                } else {
+                    if (!overviewScope.dontAutoCancelSearch) {
+                        searchWidget.cancelSearch();
+                    }
+                    GlobalFocusGrab.addDismissable(panelWindow);
+                }
+            }
+        }
+
+        Connections {
+            target: GlobalFocusGrab
+            function onDismissed() {
+                GlobalStates.overviewOpen = false;
+            }
+        }
+        implicitWidth: columnLayout.implicitWidth
+        implicitHeight: columnLayout.implicitHeight
+
+        function setSearchingText(text) {
+            searchWidget.setSearchingText(text);
+            searchWidget.focusFirstItem();
+        }
+
+        Column {
+            id: columnLayout
             visible: GlobalStates.overviewOpen
 
             WlrLayershell.namespace: "quickshell:overview"
