@@ -77,6 +77,15 @@ ShellRoot {
             const isInhibited = Idle.inhibit || (Persistent.ready && Persistent.states.idle.inhibit);
             if (!isInhibited) {
                 Quickshell.execDetached(["bash", "-c", "systemctl suspend || loginctl suspend"]);
+            } else {
+                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "off"]);
+            }
+        }
+
+        function resume(): void {
+            const isInhibited = Idle.inhibit || (Persistent.ready && Persistent.states.idle.inhibit);
+            if (isInhibited) {
+                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "on"]);
             }
         }
     }
