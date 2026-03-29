@@ -78,7 +78,7 @@ ShellRoot {
             if (!isInhibited) {
                 Quickshell.execDetached(["bash", "-c", "systemctl suspend || loginctl suspend"]);
             } else {
-                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "off"]);
+                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "off", "eDP-1"]);
             }
         }
 
