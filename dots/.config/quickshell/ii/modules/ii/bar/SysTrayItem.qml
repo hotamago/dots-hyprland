@@ -34,7 +34,7 @@ MouseArea {
                     menu.open();
             break;
         case Qt.MiddleButton:
-            TrayService.togglePin(item);
+            TrayService.togglePin(item.id);
             break;
         }
         event.accepted = true;
