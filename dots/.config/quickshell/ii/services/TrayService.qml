@@ -9,13 +9,8 @@ Singleton {
     id: root
 
     property bool smartTray: Config.options.tray.filterPassive
-
-    function getUniqueId(item) {
-        return item.id + "::" + item.tooltipTitle;
-    }
-    
-    property list<var> itemsInUserList: SystemTray.items.values.filter(i => (Config.options.tray.pinnedItems.includes(getUniqueId(i)) && (!smartTray || i.status !== Status.Passive)))
-    property list<var> itemsNotInUserList: SystemTray.items.values.filter(i => (!Config.options.tray.pinnedItems.includes(getUniqueId(i)) && (!smartTray || i.status !== Status.Passive)))
+    property list<var> itemsInUserList: SystemTray.items.values.filter(i => (Config.options.tray.pinnedItems.includes(i.id) && (!smartTray || i.status !== Status.Passive)))
+    property list<var> itemsNotInUserList: SystemTray.items.values.filter(i => (!Config.options.tray.pinnedItems.includes(i.id) && (!smartTray || i.status !== Status.Passive)))
 
     property bool invertPins: Config.options.tray.invertPinnedItems
     property list<var> pinnedItems: invertPins ? itemsNotInUserList : itemsInUserList
@@ -29,24 +24,29 @@ Singleton {
         return result;
     }
 
-    /// Pinning
-    function pin(item) {
-        var uniqueId = getUniqueId(item);
+    // Pinning
+    function pin(itemId) {
         var pins = Config.options.tray.pinnedItems;
-        if (pins.includes(uniqueId)) return;
-        Config.options.tray.pinnedItems.push(uniqueId);
+        if (pins.includes(itemId)) return;
+        Config.options.tray.pinnedItems.push(itemId);
     }
-    function unpin(item) {
-        var uniqueId = getUniqueId(item);
-        Config.options.tray.pinnedItems = Config.options.tray.pinnedItems.filter(id => id !== uniqueId);
+    function unpin(itemId) {
+        Config.options.tray.pinnedItems = Config.options.tray.pinnedItems.filter(id => id !== itemId);
     }
-    function togglePin(item) {
-        var uniqueId = getUniqueId(item);
+    function isPinned(itemId) {
+        for (var i = 0; i < root.pinnedItems.length; i++) {
+            if (root.pinnedItems[i].id === itemId)
+                return true;
+        }
+        return false;
+    }
+
+    function togglePin(itemId) {
         var pins = Config.options.tray.pinnedItems;
-        if (pins.includes(uniqueId)) {
-            unpin(item)
+        if (pins.includes(itemId)) {
+            unpin(itemId)
         } else {
-            pin(item)
+            pin(itemId)
         }
     }
 
