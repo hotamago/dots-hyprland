@@ -4,6 +4,7 @@
 repos = [
   "ririko66z/dots-hyprland",
   "sdegler/hyprland",
+  "lionheartp/Hyprland",
   "deltacopy/darkly",
   "alternateved/eza",
   "atim/starship"
