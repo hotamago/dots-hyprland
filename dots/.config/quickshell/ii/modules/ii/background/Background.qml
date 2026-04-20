@@ -288,63 +288,13 @@ Variants {
 
             WidgetCanvas {
                 id: widgetCanvas
-                // Merged logic from both branches, resolving anchor/size/parallax handling with current idioms
-                anchors {
-                    left: wallpaper.left
-                    right: wallpaper.right
-                    top: wallpaper.top
-                    bottom: wallpaper.bottom
-                    horizontalCenter: undefined
-                    verticalCenter: undefined
-                }
-                width: wallpaper.width
-                height: wallpaper.height
+                width: parent.width
+                height: parent.height
                 readonly property real parallaxFactor: {
                     var f = Config.options.background.parallax.widgetsFactor;
-                    // If bgRoot.parallaxRation exists, use it, else fallback to just 'f'
                     return bgRoot.parallaxRation ? f / bgRoot.parallaxRation : f;
                 }
-                leftMargin: {
-                    const xOnWallpaper = bgRoot.movableXSpace;
-                    const extraMove = (wallpaper.effectiveValueX * 2 * bgRoot.movableXSpace) * (parallaxFactor - 1);
-                    return xOnWallpaper - extraMove;
-                }
-                topMargin: {
-                    const yOnWallpaper = bgRoot.movableYSpace;
-                    const extraMove = (wallpaper.effectiveValueY * 2 * bgRoot.movableYSpace) * (parallaxFactor - 1);
-                    return yOnWallpaper - extraMove;
-                }
-                Behavior on leftMargin {
-                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                }
-                Behavior on topMargin {
-                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                }
-
-                // Music
                 property bool hasActiveMusic: GlobalStates.screenLocked && MprisController.activePlayer && MprisController.activePlayer.isPlaying
-                property real musicOffset: hasActiveMusic ? -80 : 0
-
-                states: State {
-                    name: "centered"
-                    when: GlobalStates.screenLocked || bgRoot.wallpaperSafetyTriggered
-                    PropertyChanges {
-                        target: widgetCanvas
-                        width: parent.width
-                        height: parent.height
-                    }
-                    AnchorChanges {
-                        target: widgetCanvas
-                        anchors {
-                            left: undefined
-                            right: undefined
-                            top: undefined
-                            bottom: undefined
-                            horizontalCenter: parent.horizontalCenter
-                            verticalCenter: parent.verticalCenter
-                        }
-                    }
-                }
                 readonly property real baseWallpaperOffsetX: (bgRoot.screen.width - wallpaper.width) / 2
                 readonly property real baseWallpaperOffsetY: (bgRoot.screen.height - wallpaper.height) / 2
                 readonly property real wallpaperTotalOffsetX: wallpaper.x - baseWallpaperOffsetX
