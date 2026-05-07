@@ -384,6 +384,7 @@ Singleton {
                 property JsonObject security: JsonObject {
                     property bool unlockKeyring: true
                     property bool requirePasswordToPower: false
+                    property string authCollapsedPrompt: "Press enter to login"
                 }
                 property bool materialShapeChars: true
             }

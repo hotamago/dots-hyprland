@@ -22,9 +22,19 @@ MouseArea {
     property bool active: false
     property bool showInputField: active || context.currentText.length > 0
     readonly property bool requirePasswordToPower: Config.options.lock.security.requirePasswordToPower
+    readonly property string authCollapsedPrompt: Config.options.lock.security.authCollapsedPrompt || Translation.tr("Press enter to login")
 
     // Force focus on entry
     function forceFieldFocus() {
+        if (context.authExpanded) {
+            passwordBox.forceActiveFocus();
+        } else {
+            root.forceActiveFocus();
+        }
+    }
+
+    function expandAuth() {
+        context.expandAuth();
         passwordBox.forceActiveFocus();
     }
     Connections {
@@ -90,6 +100,13 @@ MouseArea {
     property bool ctrlHeld: false
     Keys.onPressed: event => {
         root.context.resetClearTimer();
+        if (!root.context.authExpanded) {
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                root.expandAuth();
+                event.accepted = true;
+            }
+            return;
+        }
         if (event.key === Qt.Key_Control) {
             root.ctrlHeld = true;
         }
@@ -314,17 +331,22 @@ MouseArea {
     // Main toolbar: password box
     Toolbar {
         id: mainIsland
+        enabled: root.context.authExpanded
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
-            bottomMargin: 20
+            bottomMargin: root.context.authExpanded ? 20 : -mainIsland.height - 20
         }
         Behavior on anchors.bottomMargin {
             animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
 
         scale: root.toolbarScale
-        opacity: root.toolbarOpacity
+        opacity: root.toolbarOpacity * (root.context.authExpanded ? 1 : 0)
+
+        Behavior on opacity {
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        }
 
         // Fingerprint
         Loader {
@@ -477,14 +499,18 @@ MouseArea {
             selectionColor: materialShapeChars ? "transparent" : Appearance.colors.colSecondaryContainer
 
             // Password
-            enabled: !root.context.unlockInProgress
+            enabled: root.context.authExpanded && !root.context.unlockInProgress
             echoMode: TextInput.Password
             inputMethodHints: Qt.ImhSensitiveData
 
             // Synchronizing (across monitors) and unlocking
             onTextChanged: root.context.currentText = this.text
             onAccepted: {
-                root.context.tryUnlock(ctrlHeld);
+                if (root.context.authExpanded) {
+                    root.context.tryUnlock(ctrlHeld);
+                } else {
+                    root.expandAuth();
+                }
             }
             Connections {
                 target: root.context
@@ -561,6 +587,49 @@ MouseArea {
                     }
                 }
                 color: confirmButton.enabled ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext
+            }
+        }
+    }
+
+    Toolbar {
+        id: authCollapsedIsland
+        anchors {
+            horizontalCenter: parent.horizontalCenter
+            bottom: parent.bottom
+            bottomMargin: root.context.authExpanded ? -authCollapsedIsland.height - 20 : 20
+        }
+        scale: root.toolbarScale
+        opacity: root.toolbarOpacity * (root.context.authExpanded ? 0 : 1)
+        padding: 12
+        enabled: !root.context.authExpanded
+
+        Behavior on anchors.bottomMargin {
+            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+        }
+        Behavior on opacity {
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        }
+
+        Item {
+            Layout.leftMargin: 8
+            Layout.rightMargin: 8
+            implicitWidth: promptText.implicitWidth
+            implicitHeight: promptText.implicitHeight
+
+            StyledText {
+                id: promptText
+                anchors.centerIn: parent
+                text: root.authCollapsedPrompt
+                color: Appearance.colors.colOnSurfaceVariant
+                font.pixelSize: Appearance.font.pixelSize.small
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.expandAuth()
             }
         }
     }
@@ -711,4 +780,3 @@ MouseArea {
         }
     }
 }
-

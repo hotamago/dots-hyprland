@@ -27,6 +27,9 @@ Scope {
     property string fingerprintVerifyResult: "none" // "none", "verifying", "no-match", "unknown-error", "match"
     property bool fingerprintVerifying: false
     property int consecutiveFailures: 0 // Track consecutive failures to detect unknown-error
+    property bool authExpanded: true
+    property bool fingerPamAbortExpected: false
+    readonly property int fingerprintAuthTimeoutMs: 12000
 
     function resetTargetAction() {
         root.targetAction = LockContext.ActionEnum.Unlock;
@@ -47,6 +50,10 @@ Scope {
         root.fingerprintVerifyResult = "none";
         root.fingerprintVerifying = false;
         root.consecutiveFailures = 0;
+        root.authExpanded = true;
+        root.fingerPamAbortExpected = false;
+        authCollapseDelayTimer.stop();
+        authAttemptTimeoutTimer.stop();
         stopFingerPam();
         stopFingerprintVerify();
     }
@@ -63,6 +70,11 @@ Scope {
         if (currentText.length > 0) {
             showFailure = false;
             GlobalStates.screenUnlockFailed = false;
+            root.authExpanded = true;
+            authCollapseDelayTimer.stop();
+            authAttemptTimeoutTimer.stop();
+            stopFingerPam();
+            stopFingerprintVerify();
         }
         GlobalStates.screenLockContainsCharacters = currentText.length > 0;
         passwordClearTimer.restart();
@@ -71,21 +83,62 @@ Scope {
     function tryUnlock(alsoInhibitIdle = false) {
         root.alsoInhibitIdle = alsoInhibitIdle;
         root.unlockInProgress = true;
+        authAttemptTimeoutTimer.stop();
+        authCollapseDelayTimer.stop();
+        stopFingerPam();
+        stopFingerprintVerify();
         pam.start();
     }
 
+    function expandAuth(startFingerprint = true) {
+        root.authExpanded = true;
+        authCollapseDelayTimer.stop();
+        if (startFingerprint && root.fingerprintsConfigured && GlobalStates.screenLocked && root.currentText.length === 0) {
+            tryFingerUnlock();
+        }
+        root.shouldReFocus();
+    }
+
+    function collapseAuth() {
+        if (root.currentText.length > 0 || root.unlockInProgress || !root.fingerprintsConfigured) {
+            return;
+        }
+        authCollapseDelayTimer.stop();
+        authAttemptTimeoutTimer.stop();
+        stopFingerPam();
+        stopFingerprintVerify();
+        root.fingerprintVerifyResult = "none";
+        root.fingerprintVerifying = false;
+        root.authExpanded = false;
+        root.shouldReFocus();
+    }
+
+    function scheduleAuthCollapse(delay = 0) {
+        if (root.currentText.length > 0 || root.unlockInProgress || !root.fingerprintsConfigured) {
+            return;
+        }
+        authCollapseDelayTimer.interval = delay;
+        authCollapseDelayTimer.restart();
+    }
+
     function tryFingerUnlock() {
-        if (root.fingerprintsConfigured) {
+        if (root.fingerprintsConfigured && GlobalStates.screenLocked && root.currentText.length === 0 && !fingerPam.active) {
             // Only use PAM for authentication - it handles fingerprint verification
             // fprintd-verify will only be used for error diagnosis if PAM fails
+            root.authExpanded = true;
+            root.fingerPamAbortExpected = false;
             root.fingerprintVerifyResult = "verifying";
             root.fingerprintVerifying = true;
+            authCollapseDelayTimer.stop();
+            authAttemptTimeoutTimer.interval = root.fingerprintAuthTimeoutMs;
+            authAttemptTimeoutTimer.restart();
             fingerPam.start();
         }
     }
 
     function stopFingerPam() {
         if (fingerPam.active) {
+            root.fingerPamAbortExpected = true;
             fingerPam.abort();
         }
     }
@@ -129,7 +182,7 @@ Scope {
                 root.fingerprintsConfigured = output.includes("Fingerprints for user") && hasFingerprintEntries;
                 
                 // If fingerprints just became configured and screen is locked, start fingerprint unlock
-                if (!wasConfigured && root.fingerprintsConfigured && GlobalStates.screenLocked && !fingerPam.active) {
+                if (!wasConfigured && root.fingerprintsConfigured && GlobalStates.screenLocked && root.authExpanded && !fingerPam.active) {
                     Qt.callLater(() => tryFingerUnlock());
                 }
             }
@@ -145,7 +198,7 @@ Scope {
     // Watch for fingerprintsConfigured changes and auto-start unlock if screen is locked
     onFingerprintsConfiguredChanged: {
         // If fingerprints become configured while screen is locked, start fingerprint unlock
-        if (fingerprintsConfigured && GlobalStates.screenLocked && !fingerPam.active) {
+        if (fingerprintsConfigured && GlobalStates.screenLocked && root.authExpanded && !fingerPam.active) {
             Qt.callLater(() => tryFingerUnlock());
         }
     }
@@ -182,13 +235,21 @@ Scope {
 
         onCompleted: result => {
             if (result == PamResult.Success) {
+                root.fingerPamAbortExpected = false;
                 root.fingerprintVerifyResult = "match";
                 root.fingerprintVerifying = false;
                 root.consecutiveFailures = 0;
                 root.unlocked(root.targetAction);
                 stopFingerPam();
                 stopFingerprintVerify();
-            } else if (result == PamResult.Error) {
+            } else {
+                authAttemptTimeoutTimer.stop();
+                if (root.fingerPamAbortExpected) {
+                    root.fingerPamAbortExpected = false;
+                    root.fingerprintVerifyResult = "none";
+                    root.fingerprintVerifying = false;
+                    return;
+                }
                 // PAM failed - assume no-match for UI feedback
                 // Only change state if not already showing no-match (prevents animation retrigger)
                 if (root.fingerprintVerifyResult !== "no-match") {
@@ -207,9 +268,9 @@ Scope {
                     startFingerprintVerify();
                 }
                 
-                // Restart PAM for next attempt (PAM handles one scan at a time)
-                // Add a small delay to prevent rapid retries and give user time to see the error
-                pamRetryTimer.restart();
+                // Do not keep the sensor hot by retrying automatically. The next
+                // attempt starts only when the user expands auth again.
+                scheduleAuthCollapse(3000);
             }
         }
     }
@@ -266,7 +327,26 @@ Scope {
             
             // Don't restart fprintd-verify automatically - only use it for error diagnosis
             // PAM will handle the actual authentication attempts
+            scheduleAuthCollapse(1000);
         }
+    }
+
+    Timer {
+        id: authAttemptTimeoutTimer
+        repeat: false
+        onTriggered: {
+            stopFingerPam();
+            stopFingerprintVerify();
+            root.fingerprintVerifyResult = "none";
+            root.fingerprintVerifying = false;
+            scheduleAuthCollapse(0);
+        }
+    }
+
+    Timer {
+        id: authCollapseDelayTimer
+        repeat: false
+        onTriggered: root.collapseAuth()
     }
     
     // Timer to reset fingerprint error state after showing it
@@ -286,14 +366,4 @@ Scope {
         }
     }
     
-    // Timer to delay PAM retry after failure (prevents rapid retries)
-    Timer {
-        id: pamRetryTimer
-        interval: 500 // Wait 500ms before retrying
-        onTriggered: {
-            if (GlobalStates.screenLocked && root.fingerprintsConfigured && !fingerPam.active) {
-                tryFingerUnlock();
-            }
-        }
-    }
 }
