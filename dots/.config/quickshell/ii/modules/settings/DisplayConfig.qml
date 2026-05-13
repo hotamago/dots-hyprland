@@ -150,8 +150,8 @@ ContentPage {
     function writeHyprMonitorsConf(monitorsArray) {
         const lines = [];
         const header = [
-            "# Managed by Quickshell DisplayConfig",
-            "# Edit at your own risk; UI may overwrite."
+            "-- Managed by Quickshell DisplayConfig",
+            "-- Edit at your own risk; UI may overwrite."
         ];
 
         for (let i = 0; i < (monitorsArray?.length ?? 0); ++i) {
@@ -248,7 +248,7 @@ ContentPage {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
                 color: Appearance.colors.colSubtext
-                text: Translation.tr("Configure Hyprland monitors.\nToggle usage, focus a screen, and adjust resolution / refresh rate.\nChanges are applied immediately via hyprctl, so be careful.")
+                text: Translation.tr("Configure Hyprland monitors.\nToggle usage, focus a screen, and adjust resolution / refresh rate.\nChanges are saved as Lua and Hyprland reloads automatically.")
             }
 
             RippleButtonWithIcon {
@@ -570,12 +570,12 @@ ContentPage {
                     Layout.fillWidth: true
                     color: Appearance.colors.colSubtext
                     wrapMode: Text.Wrap
-                    text: Translation.tr("Monitors are applied left-to-right based on card order.\nTo change layout, reorder monitors in your Hyprland config or use the shell's display mode popup (Super+P).")
+                    text: Translation.tr("Monitors are applied left-to-right based on card order.\nTo change layout, edit the Lua monitor rules or use the shell's display mode popup (Super+P).")
                 }
 
                 RippleButtonWithIcon {
                     materialIcon: "tune"
-                    mainText: Translation.tr("Apply all (inline)")
+                    mainText: Translation.tr("Apply all")
                     onClicked: root.applyArrangement()
                 }
             }

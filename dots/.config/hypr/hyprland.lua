@@ -14,13 +14,10 @@ require("hyprland/keybinds")
 
 -- Custom --
 require("custom/execs")
+require("custom/monitors")
 require("custom/general")
 require("custom/rules")
 require("custom/keybinds")
-
--- nwg-displays support: re-add the files if it updates later
--- require("workspaces")
--- require("monitors")
 
 -- Shell overrides --
 require("hyprland/shellOverrides/main")

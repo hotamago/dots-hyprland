@@ -45,25 +45,91 @@ ContentPage {
         }
     }
 
+    function luaQuote(value) {
+        return "\"" + String(value ?? "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, "\\\"")
+            .replace(/\r/g, "\\r")
+            .replace(/\n/g, "\\n") + "\"";
+    }
+
+    function unquoteLuaString(value) {
+        let s = String(value ?? "").trim();
+        if (s.length >= 2 && ((s[0] === "\"" && s[s.length - 1] === "\"") || (s[0] === "'" && s[s.length - 1] === "'")))
+            s = s.substring(1, s.length - 1);
+
+        let out = "";
+        for (let i = 0; i < s.length; ++i) {
+            const ch = s[i];
+            if (ch !== "\\" || i + 1 >= s.length) {
+                out += ch;
+                continue;
+            }
+
+            const next = s[++i];
+            if (next === "n")
+                out += "\n";
+            else if (next === "r")
+                out += "\r";
+            else if (next === "\"" || next === "'" || next === "\\")
+                out += next;
+            else
+                out += next;
+        }
+        return out;
+    }
+
+    function execLineFor(command) {
+        return "    hl.exec_cmd(" + luaQuote(command) + ")";
+    }
+
+    function entryLines(label, command) {
+        const cmd = String(command ?? "").trim();
+        const lbl = String(label ?? "").trim();
+        const out = [];
+        if (lbl.length > 0)
+            out.push("    -- " + lbl);
+        if (cmd.length > 0)
+            out.push(execLineFor(cmd));
+        return out;
+    }
+
+    function findStartupBlockEnd(lines) {
+        let start = -1;
+        for (let i = 0; i < lines.length; ++i) {
+            if (String(lines[i] ?? "").indexOf("hl.on(\"hyprland.start\"") >= 0 || String(lines[i] ?? "").indexOf("hl.on('hyprland.start'") >= 0) {
+                start = i;
+                break;
+            }
+        }
+        if (start < 0)
+            return -1;
+        for (let i = lines.length - 1; i > start; --i) {
+            if (/^\s*end\)\s*$/.test(String(lines[i] ?? "")))
+                return i;
+        }
+        return -1;
+    }
+
     function parseExecEntries(textContent) {
         const out = [];
         const lines = String(textContent ?? "").split("\n");
 
         for (let i = 0; i < lines.length; ++i) {
             const line = String(lines[i] ?? "");
-            const m = line.match(/^\s*exec-once\s*=\s*(.+?)\s*$/);
+            const m = line.match(/^\s*hl\.exec_cmd\(\s*((?:"(?:\\.|[^"\\])*")|(?:'(?:\\.|[^'\\])*'))\s*\)\s*$/);
             if (!m) continue;
 
-            const command = String(m[1] ?? "").trim();
+            const command = unquoteLuaString(m[1]);
             if (!command) continue;
 
             let label = "";
-            // Use the nearest comment directly above as label (common pattern in this repo's execs.conf)
+            // Use the nearest Lua comment directly above as label.
             for (let j = i - 1; j >= 0; --j) {
                 const prev = String(lines[j] ?? "").trim();
                 if (!prev) continue;
-                if (prev.indexOf("#") === 0) {
-                    label = prev.substring(1).trim();
+                if (prev.indexOf("--") === 0) {
+                    label = prev.substring(2).trim();
                 }
                 break;
             }
@@ -81,27 +147,34 @@ ContentPage {
         const existingLines = String(existingText ?? "").split("\n");
         for (let i = 0; i < existingLines.length; ++i) {
             const line = String(existingLines[i] ?? "");
-            const m = line.match(/^\s*exec-once\s*=\s*(.+?)\s*$/);
-            if (m && String(m[1] ?? "").trim() === cmd) {
+            const m = line.match(/^\s*hl\.exec_cmd\(\s*((?:"(?:\\.|[^"\\])*")|(?:'(?:\\.|[^'\\])*'))\s*\)\s*$/);
+            if (m && unquoteLuaString(m[1]).trim() === cmd) {
                 let keep = String(existingText ?? "");
                 if (keep.length > 0 && !keep.endsWith("\n")) keep += "\n";
                 return keep;
             }
         }
 
-        let base = String(existingText ?? "");
-        base = base.replace(/\s+$/g, ""); // keep file tidy; we'll add trailing newline back
+        const lines = String(existingText ?? "").replace(/\s+$/g, "").split("\n");
+        if (lines.length === 1 && lines[0] === "")
+            lines.splice(0, 1);
 
-        const parts = [];
-        if (base.length > 0) parts.push(base);
+        const insert = entryLines(lbl, cmd);
+        const blockEnd = findStartupBlockEnd(lines);
+        if (blockEnd >= 0) {
+            if (blockEnd > 0 && String(lines[blockEnd - 1] ?? "").trim().length > 0)
+                insert.unshift("");
+            lines.splice(blockEnd, 0, ...insert);
+            return lines.join("\n").replace(/\n{3,}/g, "\n\n") + "\n";
+        }
 
-        // Ensure a blank line between blocks
-        if (parts.length > 0) parts.push("");
-
-        if (lbl.length > 0) parts.push("# " + lbl);
-        parts.push("exec-once = " + cmd);
-
-        return parts.join("\n") + "\n";
+        if (lines.length > 0)
+            lines.push("");
+        lines.push("-- Managed by Quickshell Startup");
+        lines.push("hl.on(\"hyprland.start\", function()");
+        lines.push(...insert);
+        lines.push("end)");
+        return lines.join("\n") + "\n";
     }
 
     function buildTextWithRemovedEntry(existingText, label, command) {
@@ -112,9 +185,9 @@ ContentPage {
         let removeIdx = -1;
         for (let i = 0; i < lines.length; ++i) {
             const line = String(lines[i] ?? "");
-            const m = line.match(/^\s*exec-once\s*=\s*(.+?)\s*$/);
+            const m = line.match(/^\s*hl\.exec_cmd\(\s*((?:"(?:\\.|[^"\\])*")|(?:'(?:\\.|[^'\\])*'))\s*\)\s*$/);
             if (!m) continue;
-            if (String(m[1] ?? "").trim() === cmd) {
+            if (unquoteLuaString(m[1]).trim() === cmd) {
                 removeIdx = i;
                 break;
             }
@@ -128,8 +201,8 @@ ContentPage {
         const commentIdx = removeIdx - 1;
         if (commentIdx >= 0) {
             const prev = String(lines[commentIdx] ?? "").trim();
-            if (prev.indexOf("#") === 0) {
-                const prevLabel = prev.substring(1).trim();
+            if (prev.indexOf("--") === 0) {
+                const prevLabel = prev.substring(2).trim();
                 if (!lbl || prevLabel === lbl) {
                     lines.splice(commentIdx, 1);
                 }
@@ -154,9 +227,9 @@ ContentPage {
         let updateIdx = -1;
         for (let i = 0; i < lines.length; ++i) {
             const line = String(lines[i] ?? "");
-            const m = line.match(/^\s*exec-once\s*=\s*(.+?)\s*$/);
+            const m = line.match(/^\s*hl\.exec_cmd\(\s*((?:"(?:\\.|[^"\\])*")|(?:'(?:\\.|[^'\\])*'))\s*\)\s*$/);
             if (!m) continue;
-            if (String(m[1] ?? "").trim() === oldCmd) {
+            if (unquoteLuaString(m[1]).trim() === oldCmd) {
                 updateIdx = i;
                 break;
             }
@@ -165,26 +238,26 @@ ContentPage {
 
         // Check if there's a comment line directly above
         const commentIdx = updateIdx - 1;
-        const hasCommentAbove = commentIdx >= 0 && String(lines[commentIdx] ?? "").trim().indexOf("#") === 0;
+        const hasCommentAbove = commentIdx >= 0 && String(lines[commentIdx] ?? "").trim().indexOf("--") === 0;
 
         // Update the exec line
-        lines[updateIdx] = "exec-once = " + newCmd;
+        lines[updateIdx] = execLineFor(newCmd);
 
         // Handle comment: update, add, or remove
         if (newLbl.length > 0) {
             // We want a comment
             if (hasCommentAbove) {
                 // Update existing comment
-                lines[commentIdx] = "# " + newLbl;
+                lines[commentIdx] = "    -- " + newLbl;
             } else {
                 // Insert new comment before exec line
-                lines.splice(updateIdx, 0, "# " + newLbl);
+                lines.splice(updateIdx, 0, "    -- " + newLbl);
             }
         } else {
             // We don't want a comment - remove if it exists and matches
             if (hasCommentAbove) {
                 const prev = String(lines[commentIdx] ?? "").trim();
-                const prevLabel = prev.substring(1).trim();
+                const prevLabel = prev.substring(2).trim();
                 if (!oldLbl || prevLabel === oldLbl) {
                     lines.splice(commentIdx, 1);
                 }
@@ -222,11 +295,11 @@ ContentPage {
 
     ContentSection {
         icon: "rocket_launch"
-        title: Translation.tr("Startup exec")
+        title: Translation.tr("Startup")
 
         NoticeBox {
             Layout.fillWidth: true
-            text: Translation.tr("Edits Hyprland startup commands in %1").arg(root.execsConfPath)
+            text: Translation.tr("Edits Lua startup commands in %1").arg(root.execsConfPath)
 
             Item { Layout.fillWidth: true }
 
@@ -252,7 +325,7 @@ ContentPage {
         }
 
         ContentSubsection {
-            title: root.editingIndex >= 0 ? Translation.tr("Edit exec-once") : Translation.tr("Add exec-once")
+            title: root.editingIndex >= 0 ? Translation.tr("Edit startup command") : Translation.tr("Add startup command")
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -350,7 +423,7 @@ ContentPage {
                 StyledText {
                     visible: root.execEntries.length === 0
                     color: Appearance.colors.colSubtext
-                    text: Translation.tr("No startup exec entries found.")
+                    text: Translation.tr("No startup commands found.")
                 }
 
                 Repeater {
@@ -431,4 +504,3 @@ ContentPage {
         }
     }
 }
-

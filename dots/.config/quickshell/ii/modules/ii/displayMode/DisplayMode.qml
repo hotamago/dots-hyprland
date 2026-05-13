@@ -239,8 +239,8 @@ Scope {
 
         // Persist mode by writing monitor rules to Hyprland config and reloading.
         const header = [
-            "# Managed by Quickshell DisplayMode (Super+P)",
-            "# Edit at your own risk; UI may overwrite."
+            "-- Managed by Quickshell DisplayMode (Super+P)",
+            "-- Edit at your own risk; UI may overwrite."
         ];
         const lines = HyprMonitorsConf.keywordMonitorCommandsToMonitorLines(commands);
         HyprMonitorsConf.writeMonitorLinesAndReload(lines, header);
@@ -528,4 +528,3 @@ Scope {
         }
     }
 }
-
