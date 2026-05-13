@@ -270,3 +270,14 @@ hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd(taskManager), {description = "T
 --# Cursed stuff
 --## Make window not amogus large
 hl.bind("CTRL + SUPER + Backslash", hl.dsp.window.resize({x = 640, y = 480, "exact"}) )
+
+--# Additional keybinds from Hota
+--##! Lid Switch
+hl.unbind("switch:on:Lid Switch")
+hl.unbind("switch:off:Lid Switch")
+hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("qs -c ii ipc call lidSwitch suspend"), {description = "Suspend when laptop lid is closed"})
+hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("qs -c ii ipc call lidSwitch resume"), {description = "Resume when laptop lid is opened"})
+
+--##! Task View - Super+Tab
+hl.unbind("SUPER + Tab")
+hl.bind("SUPER + Tab", hl.dsp.global("quickshell:taskViewToggle"), {description = "Toggle task view"})
