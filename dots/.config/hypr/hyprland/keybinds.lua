@@ -275,9 +275,22 @@ hl.bind("CTRL + SUPER + Backslash", hl.dsp.window.resize({x = 640, y = 480, "exa
 --##! Lid Switch
 hl.unbind("switch:on:Lid Switch")
 hl.unbind("switch:off:Lid Switch")
-hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("qs -c ii ipc call lidSwitch suspend"), {description = "Suspend when laptop lid is closed"})
+hl.bind("switch:on:Lid Switch", function()
+    hl.exec_cmd("loginctl lock-session")
+    hl.exec_cmd("qs -c ii ipc call lock activate")
+    hl.exec_cmd("qs -c ii ipc call lock focus")
+    hl.exec_cmd("qs -c ii ipc call lidSwitch suspend")
+end, {description = "Suspend when laptop lid is closed"})
 hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("qs -c ii ipc call lidSwitch resume"), {description = "Resume when laptop lid is opened"})
 
 --##! Task View - Super+Tab
 hl.unbind("SUPER + Tab")
 hl.bind("SUPER + Tab", hl.dsp.global("quickshell:taskViewToggle"), {description = "Toggle task view"})
+
+--##! Lock
+hl.unbind("SUPER + L")
+hl.bind("SUPER + L", function()
+    hl.exec_cmd("loginctl lock-session")
+    hl.exec_cmd("qs -c ii ipc call lock activate")
+    hl.exec_cmd("qs -c ii ipc call lock focus")
+end, {description = "Lock"})
