@@ -53,6 +53,12 @@ Scope {
                 }
             }
 
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_Escape) {
+                    GlobalStates.overviewOpen = false;
+                }
+            }
+
             Connections {
                 target: GlobalStates
                 function onOverviewOpenChanged() {
