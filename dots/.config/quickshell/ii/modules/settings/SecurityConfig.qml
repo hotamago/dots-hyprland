@@ -514,6 +514,36 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "lock"
+        title: Translation.tr("Lock screen")
+
+        ContentSubsection {
+            title: Translation.tr("Authentication")
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 8
+                Layout.rightMargin: 8
+                spacing: 4
+
+                StyledText {
+                    text: Translation.tr("Collapsed auth prompt")
+                    color: Appearance.colors.colOnSecondaryContainer
+                }
+
+                MaterialTextField {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Press enter to login")
+                    text: Config.options.lock.security.authCollapsedPrompt
+                    onTextChanged: {
+                        Config.options.lock.security.authCollapsedPrompt = text;
+                    }
+                }
+            }
+        }
+    }
+
+    ContentSection {
         icon: "fingerprint"
         title: Translation.tr("Fingerprint")
 
@@ -1209,4 +1239,3 @@ ContentPage {
         }
     }
 }
-

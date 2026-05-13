@@ -20,6 +20,7 @@ LockScreen {
     id: root
 
     property bool passwordView: false
+    readonly property string authCollapsedPrompt: Config.options.lock.security.authCollapsedPrompt || Translation.tr("Press enter to login")
 
     lockSurface: Item {
         id: lockSurfaceItem
@@ -29,7 +30,25 @@ LockScreen {
             lockSurfaceItem.forceActiveFocus();
         }
 
-        Keys.onPressed: {
+        Connections {
+            target: root.context
+            function onAuthExpandedChanged() {
+                if (!root.context.authExpanded) {
+                    interactables.resetToUnfocusedView();
+                    lockSurfaceItem.forceActiveFocus();
+                }
+            }
+        }
+
+        Keys.onPressed: event => {
+            if (!root.context.authExpanded) {
+                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    root.context.expandAuth();
+                    interactables.switchToFocusedView();
+                    event.accepted = true;
+                }
+                return;
+            }
             interactables.switchToFocusedView();
         }
 
@@ -101,7 +120,14 @@ LockScreen {
         // }
 
         function switchToFocusedView() {
+            root.context.expandAuth();
             switchToPasswordViewAnim.restart();
+        }
+
+        function resetToUnfocusedView() {
+            switchToPasswordViewAnim.stop();
+            unfocusedContent.y = 0;
+            root.passwordView = false;
         }
 
         SequentialAnimation {
@@ -149,6 +175,18 @@ LockScreen {
                     baseIcon: WIcons.batteryIcon
                     icon: WIcons.batteryLevelIcon
                 }
+            }
+            WText {
+                visible: !root.context.authExpanded
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    bottom: parent.bottom
+                    bottomMargin: 34
+                }
+                color: Looks.darkColors.fg
+                opacity: 0.84
+                font.pixelSize: Looks.font.pixelSize.large
+                text: root.authCollapsedPrompt
             }
         }
 
@@ -290,7 +328,11 @@ LockScreen {
 
                         onTextChanged: root.context.currentText = this.text
                         onAccepted: {
-                            root.context.tryUnlock();
+                            if (root.context.authExpanded) {
+                                root.context.tryUnlock();
+                            } else {
+                                root.context.expandAuth();
+                            }
                         }
                         Connections {
                             target: root.context
@@ -327,7 +369,11 @@ LockScreen {
 
                     PasswordBoxButton {
                         onClicked: {
-                            root.context.tryUnlock();
+                            if (root.context.authExpanded) {
+                                root.context.tryUnlock();
+                            } else {
+                                root.context.expandAuth();
+                            }
                         }
                         icon.name: "arrow-right"
                     }

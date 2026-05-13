@@ -22,6 +22,8 @@
   "Polling interval (ms)": "Thời gian lặp lại (ms)",
   "Center title": "Căn giữa tiêu đề",
   "Lock": "Khóa màn hình",
+  "Press enter to login": "Nhấn Enter để đăng nhập",
+  "Collapsed auth prompt": "Dòng nhắc khi thu gọn xác thực",
   "Screen snip": "Chụp màn hình (chọn vùng)",
   "User agent (for services that require it)": "User agent (nếu cần)",
   "Report a Bug": "Báo lỗi",
