@@ -78,14 +78,14 @@ ShellRoot {
             if (!isInhibited) {
                 Quickshell.execDetached(["bash", "-c", "systemctl suspend || loginctl suspend"]);
             } else {
-                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "off", "eDP-1"]);
+                Hyprland.dispatch(`hl.dsp.dpms({ action = "off", monitor = "eDP-1" })`);
             }
         }
 
         function resume(): void {
             const isInhibited = Idle.inhibit || (Persistent.ready && Persistent.states.idle.inhibit);
             if (isInhibited) {
-                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "on"]);
+                Hyprland.dispatch(`hl.dsp.dpms({ action = "on" })`);
             }
         }
     }
