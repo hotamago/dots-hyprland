@@ -23,7 +23,6 @@ Item {
         anchors.fill: parent
         anchors.margins: Appearance.rounding.small
         anchors.bottomMargin: Appearance.rounding.small + root.scrollBarHeight + root.scrollBarGap
-        clip: true
         flickableDirection: Flickable.HorizontalFlick
         contentHeight: height
         contentWidth: flow.implicitWidth
